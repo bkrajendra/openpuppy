@@ -1,4 +1,4 @@
-# Intelligent Autonomous AI Agent
+# 🐕 OpenPuppy : Intelligent Autonomous AI Agent
 
 LangGraph-based agent with multi-LLM support, supervisor pattern, 11+ tools, SQLite + ChromaDB memory, and multiple interfaces: **CLI**, **Telegram bot**, **Web API** (chat + admin dashboard).
 
