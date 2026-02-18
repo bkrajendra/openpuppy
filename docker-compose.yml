@@ -1,0 +1,28 @@
+# Phase 3: Docker Compose for Intelligent Agent
+# Usage: copy .env and set OPENAI_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS as needed
+#   docker compose run --rm agent-cli
+#   docker compose up -d telegram   # run Telegram bot in background
+
+services:
+  agent-cli:
+    build: .
+    entrypoint: ["uv", "run", "agent-cli"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - agent-data:/data
+    env_file: .env
+
+  telegram:
+    build: .
+    entrypoint: ["uv", "run", "agent-telegram"]
+    volumes:
+      - agent-data:/data
+    env_file: .env
+    environment:
+      - PROMETHEUS_METRICS_PORT=9090
+    ports:
+      - "9090:9090"   # Prometheus scrape target
+
+volumes:
+  agent-data:

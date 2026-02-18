@@ -1,0 +1,47 @@
+agent:
+  name: IntelligentAgent
+  max_iterations: 5
+  timeout_seconds: 130
+llm:
+  primary:
+    provider: openai
+    model: gpt-4o-mini
+    temperature: 0.7
+    max_tokens: 2000
+  fallback:
+    provider: ollama
+    model: llama3.2
+    base_url: http://localhost:11434/v1
+tools:
+  enabled:
+  - web_search
+  - code_executor
+  - read_file
+  - write_file
+  - list_directory
+  - wikipedia_lookup
+  - calculator
+  - weather
+  - store_memory
+  - retrieve_memory
+  sandboxing:
+    code_executor:
+      max_execution_time: 10
+      allowed_imports:
+      - math
+      - statistics
+      - datetime
+memory:
+  database_path: ./data/agent_memory.db
+  vector_store:
+    enabled: true
+    path: ./data/vector_store
+scheduler: null
+interfaces:
+  cli:
+    enabled: true
+  telegram:
+    enabled: true
+  api:
+    enabled: true
+    port: 8000

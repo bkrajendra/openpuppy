@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intelligent Agent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="w-full max-w-2xl">
+    <h1 class="text-2xl font-semibold mb-4 text-center">Intelligent Agent</h1>
+    <div id="thread-id" class="text-xs text-slate-400 mb-2"></div>
+    <div id="messages" class="space-y-3 mb-4 max-h-96 overflow-y-auto rounded-lg border border-slate-700 p-3 bg-slate-800/50"></div>
+    <form id="form" class="flex gap-2">
+      <input
+        id="input"
+        type="text"
+        placeholder="Ask anything..."
+        class="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+        autocomplete="off"
+      />
+      <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-medium hover:bg-emerald-500 transition">Send</button>
+    </form>
+    <p class="text-xs text-slate-500 mt-2 text-center">Phase 4 • <a href="/admin" class="text-emerald-500 hover:underline">Admin</a> • Supervisor • Tools • Memory</p>
+  </div>
+  <script>
+    const API = window.location.origin;
+    const threadId = 'web_' + Math.random().toString(36).slice(2, 10);
+    document.getElementById('thread-id').textContent = 'Thread: ' + threadId;
+
+    function addMsg(role, text) {
+      const div = document.createElement('div');
+      div.className = role === 'user' ? 'text-right' : 'text-left';
+      const bubble = document.createElement('div');
+      bubble.className = 'inline-block max-w-[85%] rounded-lg px-3 py-2 ' +
+        (role === 'user' ? 'bg-emerald-700/50' : 'bg-slate-700');
+      bubble.textContent = text;
+      div.appendChild(bubble);
+      document.getElementById('messages').appendChild(div);
+      div.scrollIntoView();
+    }
+
+    document.getElementById('form').onsubmit = async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('input');
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.value = '';
+      addMsg('user', msg);
+      try {
+        const res = await fetch(API + '/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, thread_id: threadId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        addMsg('assistant', data.response);
+      } catch (err) {
+        addMsg('assistant', 'Error: ' + err.message);
+      }
+    };
+  </script>
+</body>
+</html>

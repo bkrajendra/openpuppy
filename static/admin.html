@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    [data-tab].hidden { display: none; }
+    .tab-active { border-bottom: 2px solid rgb(16 185 129); color: rgb(16 185 129); }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div class="max-w-5xl mx-auto p-6">
+    <header class="flex items-center justify-between border-b border-slate-700 pb-4 mb-6">
+      <h1 class="text-2xl font-bold">Agent Admin</h1>
+      <a href="/" class="text-emerald-400 hover:underline text-sm">← Chat</a>
+    </header>
+
+    <nav class="flex gap-4 border-b border-slate-700 mb-6">
+      <button data-tab-nav="status" class="tab-nav pb-2 px-1 tab-active">Status</button>
+      <button data-tab-nav="tools" class="tab-nav pb-2 px-1">Tools</button>
+      <button data-tab-nav="agents" class="tab-nav pb-2 px-1">Agents</button>
+      <button data-tab-nav="config" class="tab-nav pb-2 px-1">Config</button>
+    </nav>
+
+    <div id="tab-status" data-tab class="space-y-4">
+      <h2 class="text-lg font-semibold">System Status</h2>
+      <div id="status-content" class="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+        <p class="text-slate-400">Loading…</p>
+      </div>
+    </div>
+
+    <div id="tab-tools" data-tab class="hidden space-y-6">
+      <h2 class="text-lg font-semibold">Tools</h2>
+      <div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+        <h3 class="font-medium mb-3">Add tool (HTTP)</h3>
+        <p class="text-slate-400 text-sm mb-3">Add a custom tool that calls an HTTP endpoint. The agent will be able to use it by name.</p>
+        <form id="add-tool-form" class="grid gap-3 max-w-xl">
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Name</label>
+            <input name="name" required placeholder="e.g. my_api_lookup" class="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Description (for the agent)</label>
+            <input name="description" placeholder="What this tool does" class="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">URL</label>
+            <input name="url" type="url" required placeholder="https://api.example.com/action" class="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Method</label>
+            <select name="method" class="rounded border border-slate-600 bg-slate-800 px-3 py-2">
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Parameters (JSON, optional)</label>
+            <textarea name="parameters_schema" rows="4" placeholder='{"properties":{"query":{"type":"string"}},"required":["query"]}' class="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 font-mono text-sm"></textarea>
+          </div>
+          <button type="submit" class="rounded bg-emerald-600 px-4 py-2 font-medium hover:bg-emerald-500 w-fit">Add tool</button>
+        </form>
+        <p id="add-tool-msg" class="mt-2 text-sm hidden"></p>
+      </div>
+      <div class="rounded-lg border border-slate-700 bg-slate-800/50 overflow-hidden">
+        <h3 class="font-medium p-4 border-b border-slate-700">All tools</h3>
+        <div id="tools-list" class="p-4">
+          <p class="text-slate-400">Loading…</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-agents" data-tab class="hidden space-y-4">
+      <h2 class="text-lg font-semibold">Agents (teams)</h2>
+      <div id="agents-content" class="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+        <p class="text-slate-400">Loading…</p>
+      </div>
+    </div>
+
+    <div id="tab-config" data-tab class="hidden space-y-4">
+      <h2 class="text-lg font-semibold">Config</h2>
+      <p class="text-slate-400 text-sm">Edit agent config (JSON). Save writes to config/agent_config.yaml. Restart may be required for some changes.</p>
+      <div class="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+        <textarea id="config-editor" rows="20" class="w-full rounded border border-slate-600 bg-slate-800 px-3 py-2 font-mono text-sm" placeholder="Loading…"></textarea>
+        <button id="config-save" class="mt-3 rounded bg-emerald-600 px-4 py-2 font-medium hover:bg-emerald-500">Save config</button>
+        <span id="config-msg" class="ml-3 text-sm"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+
+    function tabShow(id) {
+      document.querySelectorAll('[data-tab]').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-nav').forEach(el => el.classList.remove('tab-active'));
+      const panel = document.getElementById('tab-' + id);
+      const btn = document.querySelector('[data-tab-nav="' + id + '"]');
+      if (panel) panel.classList.remove('hidden');
+      if (btn) btn.classList.add('tab-active');
+      if (id === 'status') loadStatus();
+      if (id === 'tools') loadTools();
+      if (id === 'agents') loadAgents();
+      if (id === 'config') loadConfig();
+    }
+    document.querySelectorAll('.tab-nav').forEach(btn => {
+      btn.addEventListener('click', () => tabShow(btn.getAttribute('data-tab-nav')));
+    });
+
+    async function loadStatus() {
+      const el = document.getElementById('status-content');
+      try {
+        const r = await fetch(API + '/admin/status');
+        const d = await r.json();
+        el.innerHTML = `
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><dt class="text-slate-400 text-sm">Status</dt><dd class="font-medium">${d.status || 'ok'}</dd></div>
+            <div><dt class="text-slate-400 text-sm">Tools total</dt><dd>${d.tools_total ?? '-'}</dd></div>
+            <div><dt class="text-slate-400 text-sm">Built-in tools</dt><dd>${d.tools_builtin ?? '-'}</dd></div>
+            <div><dt class="text-slate-400 text-sm">Custom tools</dt><dd>${d.tools_custom ?? '-'}</dd></div>
+            <div class="sm:col-span-2"><dt class="text-slate-400 text-sm">Agent teams</dt><dd>${(d.agents_teams || []).join(', ') || '-'}</dd></div>
+          </dl>
+        `;
+      } catch (e) {
+        el.innerHTML = '<p class="text-red-400">Error: ' + e.message + '</p>';
+      }
+    }
+
+    async function loadTools() {
+      const el = document.getElementById('tools-list');
+      try {
+        const r = await fetch(API + '/admin/tools');
+        const d = await r.json();
+        if (!d.tools || !d.tools.length) {
+          el.innerHTML = '<p class="text-slate-400">No tools registered.</p>';
+          return;
+        }
+        el.innerHTML = `
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-slate-400 border-b border-slate-700"><th class="pb-2">Name</th><th class="pb-2">Description</th><th class="pb-2">Source</th><th class="pb-2"></th></tr></thead>
+            <tbody>
+              ${d.tools.map(t => `
+                <tr class="border-b border-slate-700/50">
+                  <td class="py-2 font-mono">${escapeHtml(t.name)}</td>
+                  <td class="py-2 text-slate-400">${escapeHtml((t.description || '').slice(0, 60))}${(t.description || '').length > 60 ? '…' : ''}</td>
+                  <td class="py-2"><span class="px-2 py-0.5 rounded ${t.source === 'custom' ? 'bg-amber-900/50 text-amber-300' : 'bg-slate-700 text-slate-300'}">${t.source}</span></td>
+                  <td class="py-2">${t.source === 'custom' ? '<button type="button" data-remove-tool="' + escapeHtml(t.name) + '" class="text-red-400 hover:underline">Remove</button>' : ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        el.querySelectorAll('[data-remove-tool]').forEach(btn => {
+          btn.addEventListener('click', () => removeTool(btn.getAttribute('data-remove-tool')));
+        });
+      } catch (e) {
+        el.innerHTML = '<p class="text-red-400">Error: ' + e.message + '</p>';
+      }
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    async function removeTool(name) {
+      if (!confirm('Remove custom tool "' + name + '"?')) return;
+      try {
+        const r = await fetch(API + '/admin/tools/' + encodeURIComponent(name), { method: 'DELETE' });
+        if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+        loadTools();
+        loadStatus();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    document.getElementById('add-tool-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('add-tool-msg');
+      const form = e.target;
+      let params = {};
+      const raw = form.parameters_schema.value.trim();
+      if (raw) {
+        try { params = JSON.parse(raw); } catch (err) { msg.textContent = 'Invalid parameters JSON'; msg.classList.remove('hidden'); msg.classList.add('text-red-400'); return; }
+      }
+      if (!params.properties) params.properties = {};
+      if (!params.required) params.required = [];
+      try {
+        const r = await fetch(API + '/admin/tools', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name.value.trim(),
+            description: form.description.value.trim(),
+            type: 'http',
+            url: form.url.value.trim(),
+            method: form.method.value,
+            parameters_schema: params,
+          }),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.detail || r.statusText);
+        msg.textContent = 'Tool added.';
+        msg.classList.remove('text-red-400');
+        msg.classList.add('text-emerald-400');
+        msg.classList.remove('hidden');
+        form.reset();
+        loadTools();
+        loadStatus();
+      } catch (err) {
+        msg.textContent = 'Error: ' + err.message;
+        msg.classList.add('text-red-400');
+        msg.classList.remove('hidden');
+      }
+    });
+
+    async function loadAgents() {
+      const el = document.getElementById('agents-content');
+      try {
+        const r = await fetch(API + '/admin/agents');
+        const d = await r.json();
+        const teams = d.teams || {};
+        el.innerHTML = `
+          <dl class="space-y-4">
+            ${Object.entries(teams).map(([team, tools]) => `
+              <div>
+                <dt class="font-medium text-emerald-400">${escapeHtml(team)}</dt>
+                <dd class="text-slate-400 text-sm mt-1">${(tools.length ? tools.join(', ') : 'All tools')}</dd>
+              </div>
+            `).join('')}
+          </dl>
+        `;
+      } catch (e) {
+        el.innerHTML = '<p class="text-red-400">Error: ' + e.message + '</p>';
+      }
+    }
+
+    async function loadConfig() {
+      const el = document.getElementById('config-editor');
+      try {
+        const r = await fetch(API + '/admin/config');
+        const d = await r.json();
+        el.value = JSON.stringify(d, null, 2);
+        el.placeholder = '';
+      } catch (e) {
+        el.value = '';
+        el.placeholder = 'Error: ' + e.message;
+      }
+    }
+
+    document.getElementById('config-save').addEventListener('click', async () => {
+      const el = document.getElementById('config-editor');
+      const msg = document.getElementById('config-msg');
+      let parsed;
+      try {
+        parsed = JSON.parse(el.value);
+      } catch (e) {
+        msg.textContent = 'Invalid JSON: ' + e.message;
+        msg.className = 'ml-3 text-sm text-red-400';
+        return;
+      }
+      try {
+        const r = await fetch(API + '/admin/config', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed),
+        });
+        if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+        msg.textContent = 'Saved.';
+        msg.className = 'ml-3 text-sm text-emerald-400';
+      } catch (e) {
+        msg.textContent = 'Error: ' + e.message;
+        msg.className = 'ml-3 text-sm text-red-400';
+      }
+    });
+
+    tabShow('status');
+  </script>
+</body>
+</html>

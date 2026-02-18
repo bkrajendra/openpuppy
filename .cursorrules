@@ -1,0 +1,57 @@
+# Project: Intelligent Autonomous AI Agent
+
+## Package manager & run
+- Use **uv** for all dependency and run commands: `uv sync`, `uv run <script|agent-cli|pytest>`, `uv add <pkg>`, `uv lock`. See README.
+
+## Tech Stack
+- Python 3.11+
+- LangGraph for orchestration
+- SQLite for memory
+- OpenAI/Anthropic/Ollama for LLM
+- python-telegram-bot for Telegram interface
+
+## Code Style
+- Use async/await throughout
+- Type hints mandatory (Python 3.11+ syntax)
+- Pydantic for all data validation
+- Structured logging with structlog
+- Follow PEP 8
+
+## Architecture Principles
+- Deterministic orchestration (no infinite loops)
+- Explicit tool invocation only
+- Maximum 5 iterations per task
+- Fail gracefully with timeouts
+- Observable execution graphs
+
+## Project Structure
+Follow the structure defined in SPEC.md under "Project Structure"
+
+## Implementation Phases
+Currently: Phase 4 - Advanced Features (supervisor, scheduler, tool composition, Web API, plugins, episodic/semantic memory, A/B prompts)
+Reference: SPEC.md Phase 4 section; Phase summary in summary.md
+
+## Key Constraints
+- Never use while loops in LangGraph (use max_iterations)
+- All tools must return ToolResult schema
+- All LLM calls must have timeout
+- All database operations must be async
+- No blocking I/O operations
+
+## Testing Requirements
+- Unit tests for all tools
+- Integration tests for workflows
+- Use pytest with async support
+- Mock external LLM calls in tests
+
+## When Creating New Files
+- Check SPEC.md for correct directory placement
+- Follow naming conventions: snake_case for files
+- Add type hints to all function signatures
+- Include docstrings with examples
+- Add logging to all major functions
+
+## References
+- Main Spec: SPEC.md
+- Tool architecture: SPEC.md section "Tool Architecture Model"
+- Graph design: SPEC.md section "LangGraph Orchestration Model"
